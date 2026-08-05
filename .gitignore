@@ -1,0 +1,36 @@
+# 构建产物
+dist/
+build/
+.gradle/
+gradle-8.5/
+gradle-8.5-bin.zip
+out/
+
+# 二进制依赖（ProjectE jar 需自行放置：见 README 构建说明）
+libs/
+
+# 第三方参考源码（本地 clone，不随仓库发布）
+refs/
+
+# 运行时产物
+run/
+logs/
+.emc_assistant/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+# P2 运行时缓存（config.json 含 LLM API key，绝不入库）
+emc_assistant/_emc_cache/
+
+# 个人附件 / IDE
+.hermes/
+.idea/
+*.iml
+.vscode/
+
+# 系统
+Thumbs.db
+.DS_Store

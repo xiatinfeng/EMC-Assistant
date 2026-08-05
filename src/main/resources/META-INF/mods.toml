@@ -1,0 +1,36 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="emcassistant"
+version="${file.jarVersion}"
+displayName="EMC Assistant"
+credits=""
+authors="EMC Assistant Authors"
+description='''
+Runtime probe mod that scans all registered items, detects missing EMC values,
+and identifies raw materials (zero-indegree items) not covered by ProjectE/PEI.
+Outputs items_snapshot.json for offline processing.
+'''
+
+[[dependencies.emcassistant]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.emcassistant]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.21)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.emcassistant]]
+modId="projecte"
+mandatory=true
+versionRange="[1.0,)"
+ordering="NONE"
+side="BOTH"
