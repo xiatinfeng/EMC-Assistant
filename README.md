@@ -4,6 +4,18 @@
 
 > 与「等价兼容（ProjectE Integration）」的哲学区别：它把兼容 mod 的**所有物品**预写 EMC（写答案）；我们只写**种子 + 规则**（原材料 EMC 种子值 + 配方转换边），产物价值让图算法动态生长——原料改价全链自动传导，配方链完整，不用手工维护每个值。
 
+## 文档导航
+
+| 文档 | 职责 | 状态 |
+|---|---|---|
+| **README.md**（本文件） | 对外门面：定位 / 用法 / 构建 / 生态分工 / 来源声明 | ✅ 现行 |
+| **[RECIPE-TRANSLATOR-DESIGN.md](RECIPE-TRANSLATOR-DESIGN.md)** | **现行主功能设计**：M1–M3.5 演进史 + §13 现行技术路线 | ✅ 现行 |
+| [DESIGN.md](DESIGN.md) | 历史基线设计（2026-07）：原始"扫描+标注工具"架构，其五道判断逻辑 = 种子预设思想来源 | ⚠️ 已过时（被 M3 产品模式取代） |
+| [RECIPE-INTEGRATION-RESEARCH.md](RECIPE-INTEGRATION-RESEARCH.md) | 调研档案：配方翻译可行性/三路线 | 📄 设计依据 |
+| [GITHUB-ECOSYSTEM-RESEARCH.md](GITHUB-ECOSYSTEM-RESEARCH.md) | 调研档案：GitHub 生态/API/保底机制 | 📄 设计依据 |
+
+建议阅读顺序：本文件 → RECIPE-TRANSLATOR-DESIGN.md §13（现行路线）→ 需要追溯决策史再看 DESIGN.md / 调研文档。
+
 ## 核心机制
 
 1. **配方翻译（RecipeTypeMapper）**：6 个 mod 的机器/仪式配方在 ProjectE mapping 阶段被逐条翻译成转换边（`addConversion`），产物 EMC = Σ材料 ÷ 产出数，由图算法传播计算。
