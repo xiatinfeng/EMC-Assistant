@@ -4,6 +4,9 @@
 > 上游调研：`RECIPE-INTEGRATION-RESEARCH.md`（可行性/三路线）+ `GITHUB-ECOSYSTEM-RESEARCH.md`（生态/API/保底分析）。
 > 用户拍板：①保底机制**本期不做**，设计成 config 开关预留；②**先做主要的加工配方翻译**。
 
+> **📌 文档状态（2026-08-06 更新）**：本文件保留完整决策演进史；标注「已废除」的方案不再实施。
+> **现行技术路线 = §12/§13 的 M3 产品模式**：装 jar 即用（6 个 RecipeTypeMapper 翻译配方 + RawMaterialEmcMapper 快速路径种子表），M1–M3.5 已全部实现并交付，见 §13。
+
 ## 1. 目标与边界
 
 - **目标**：把整合包里 ProjectE 默认不认识的加工配方（机器/仪式 recipeType）翻译成 ProjectE 的转换边（`customConversions`），使机器产物/仪式产物获得动态计算的 EMC。
@@ -11,13 +14,14 @@
 
 ## 2. 位置决策：P1 快照增强 + P2 翻译器（理由）
 
-| 方案 | 评估 |
-|---|---|
-| ~~R1a 工具离线扫 mods jar~~ | ❌ 拿不到运行时配方；tag 跨 mod 展开难；版本耦合高 |
-| ~~R2 mod 内直接 EMCApi.setValue~~ | 可行（API 已实证）但把翻译逻辑锁死在 Java mod 里，迭代慢、跟 ProjectE 版本走 |
-| **R1b P1 导配方快照 + P2 翻译器（选定）** | ✅ P1 游戏内导出**完整配方快照**（RecipeManager 全量 + recipeType 分类）→ P2 纯数据翻译（环自检/0 传染/白名单）→ 生成 `pe_custom_conversions` datapack JSON（格式已实证）。翻译逻辑留在 Python（好迭代、可离线验证），运行时数据由 P1 保证准确 |
+| 方案 | 评估 | 状态 |
+|---|---|---|
+| ~~R1a 工具离线扫 mods jar~~ | ❌ 拿不到运行时配方；tag 跨 mod 展开难；版本耦合高 | **已废除** |
+| ~~R2 mod 内直接 EMCApi.setValue~~ | 可行（API 已实证）但把翻译逻辑锁死在 Java mod 里，迭代慢、跟 ProjectE 版本走 | **已废除** |
+| ~~R1b P1 导配方快照 + P2 翻译器~~ | ✅ P1 游戏内导出**完整配方快照**（RecipeManager 全量 + recipeType 分类）→ P2 纯数据翻译 → 生成 datapack JSON。曾选定 | **已废除**（被 §11 翻译器内置 mod 取代 → 再升级为 §12 产品模式） |
+| **R3 现行：M3 产品模式（§12/§13）** | ✅ 装 jar 即用：`@RecipeTypeMapper(requiredMods=...)` 启动自动注册 → `handleRecipe` 逐条 `addConversion` 喂边（加工方式）+ `@EMCMapper` `setValueBefore` 设原料种子值。**无需扫描/生成/命令，与 Integration 天然排重** | ✅ **实施中（已交付）** |
 
-管线：`P1 扫描（增强）→ snapshot JSON（含 recipes）→ P2 RecipeTranslator → pe_custom_conversions JSON → 整合包 datapack（data/emc_assistant/pe_custom_conversions/）→ 游戏内 /projecte reloademc`。
+管线（现行）：`装 jar → 进游戏 → ProjectE mapping 阶段自动发现 mapper → 转换边 + 种子值入图算法 → EMC 自动算好`。（早期管线 `P1 扫描 → snapshot → P2 翻译 → datapack → reloademc` 已作废，P2 降级为可选离线分析工具。）
 
 ## 3. P1 增强：snapshot schema 扩展
 
@@ -66,15 +70,18 @@ CREATE TABLE recipes (
 - 仪式配方的 `soulCost`/`duration`/`entity_to_sacrifice`/`activation_item`/`craftType` 结构要求 → **忽略**（进 `special_cost` 仅记录，不上转换边）。
 - tag 输入：**可保留为 `#tag` 直接写进转换边**（1.20.1 ProjectE 原生支持，有 TagMapper）；若展开则展开后指向不存在物品 → 告警并跳过该边（防静默失效）。两者策略 M3 定稿。
 
-## 5. 里程碑
+## 5. 里程碑（实际进度，2026-08-06 更新）
 
-| 里程碑 | 内容 | 验收 |
+| 里程碑 | 内容 | 状态 |
 |---|---|---|
-| **M1** | P1 增强：recipes 快照导出 + recipeType 分类 + projecte_sees 判定 | 单机跑出 ATM9 配方缺口报告 |
-| **M2** | P2 翻译器核心：vanilla recipeType 解析 + JSON 生成 + 写 config | 生成合法 customConversions，游戏内 reload 生效 |
-| **M3** | 机器/仪式适配器：Create/Mekanism/Thermal/Occultism/BloodMagic/ProductiveBees | 对应产物有 EMC |
-| **M4** | 安全自检：环检测 + 0 传染预演 + 缺口报告完整化 | 无环、0 传染源清单、报告可读 |
-| **M5（预留）** | 保底开关实现（enableMinEmcFloor） | config 开关生效 |
+| **M1** | P1 增强：recipes 快照导出 + recipeType 分类 + projecte_sees 判定 + P2 recipes 表/gap_report | ✅ 已完成（P1 快照扩展 + P2 缺口报告） |
+| **M1.5** | 游戏内消息栏反馈 + `/emca status/rescan` 命令 | ✅ 已完成 |
+| **M2** | 翻译器内置 mod + 开发模式开关（`/emca mode on/off`）+ `/emca translate` 生成 datapack | ✅ 已完成（dev 命令保留，仅调试用） |
+| **M2.1** | Integration 排重（`ModList.isLoaded` + 11 mod 黑名单）+ 每 mod 5000 边限流 | ✅ 已完成 |
+| **M3** | 产品模式：6 个 RecipeTypeMapper + 原料预设 `@EMCMapper` + ProjectE 编译依赖 + 即用 jar | ✅ 已完成（dist/EMCAssistant.jar） |
+| **M3.1–M3.5** | 闭环种子 → 逆向表内置 → 染料钉值 → 快照化防御 → **零干扰快速路径** | ✅ 已完成（见 §13） |
+| **M4** | 安全自检：环检测 + 0 传染预演（离线） | ⏳ 部分（翻译器逐条容错已内置；完整预演未做） |
+| **M5（预留）** | 保底开关实现（enableMinEmcFloor） | ⏳ config 开关预留，未实现（用户拍板本期不做） |
 
 ## 6. 依赖与风险
 
@@ -83,15 +90,18 @@ CREATE TABLE recipes (
 - P1 快照的 recipeType 覆盖度（mod 配方若不走 RecipeManager 则快照拿不到 → 缺口报告标"不可达"）。
 - 适配器清单已按 ATM9 实证收窄 + 与 ProjectE Integration 排重（§4 ②）。
 
-## 7. 待办流转
+## 7. 待办流转（2026-08-06 更新：M1–M3.5 已完成）
 
 - [x] 拉 ATM9 modlist：**测试包拍板 = ATM9**（1.20.1 Forge，与用户环境同栈；ATM10 是 1.21.1 NeoForge 弃用）
 - [x] ⚠️ **ATM9 原包无 ProjectE** → 测试环境需加装 ProjectE 1.20.1（+ 我们的 P1 mod）
 - [x] **配方形态实证（解包 ATM9 实际 jar）**：六候选 mod 配方全部是标准 datapack recipe JSON（`data/<mod>/recipes/`）→ P1 RecipeManager 可全量读到
 - [x] **1.20.1 输出格式实证**：pe_custom_conversions datapack 格式（ProjectE jar 自带 defaults/metals.json + Integration 38 个示例）→ 不再依赖 example.json
 - [x] **对标发现：ProjectE Integration（等价兼容）7.2.5** = 1.20.1 现役，半静态钉值 + RecipeTypeMapper；已覆盖 BM/Botania/Ars/Alchemistry/AE2/Avaritia → **我们的差异化 = Create/Mekanism/Thermal/Occultism/ProductiveBees（其空白区）**
-- [ ] M1：P1 snapshot schema + 导出逻辑
-- [ ] M1：配方缺口报告首个产出
+- [x] **M1**：P1 snapshot schema + 导出逻辑 + 配方缺口报告首个产出
+- [x] **M2/M2.1**：翻译器内置 + dev 模式 + Integration 排重 + 限流
+- [x] **M3**：6 个 RecipeTypeMapper + 原料预设 + 即用 jar（§12.4 已勾选）
+- [x] **M3.1–M3.5**：闭环种子 → 逆向表 → 染料 → 快照化 → 快速路径（§13）
+- [ ] **当前待办**：①快速路径版 ATM9 验收（进存档/建新存档不崩）②闭环种子恢复为 config 开关（默认关）③装 GTToolMapper + Integration 消 GT/装饰缺口 ④第二梯队适配器（enderio→chemlib→rechiseled→mysticalagriculture→railcraft 按缺口数字排）⑤M4 环自检离线预演
 
 ## 8. ATM9 配方形态实证（2026-08-05 解包 jar，第一手）
 
@@ -213,12 +223,12 @@ ATM9（装 ProjectE 1.20.1 + 新版 P1 jar）跑一次 → P2 导入 → gap_rep
 - **调试模式（M2 现状）**：`/emca scan/translate/status` 保留 → 缺口诊断、环排查。
 - Python P2：可选离线分析（recipes 表/gap_report），不参与正式流程。
 
-### 12.4 M3 实施清单
-- [ ] build.gradle 加 ProjectE 编译期依赖（CurseForge Maven 或 flatDir libs/）
-- [ ] 通用/按 mod 的 RecipeTypeMapper（Create/Mekanism/Thermal/Occultism/BloodMagic/ProductiveBees）+ conditional/mek_data 嵌套处理
-- [ ] 原料预设模块（标签识别 + 挖掘等级对标 → setValueBefore）
-- [ ] 与 Integration 排重决策（装 Integration 时原料预设行为）
-- [ ] 编译出"即用 jar" → 真实验收（ATM9）
+### 12.4 M3 实施清单（2026-08-06：全部完成 ✅）
+- [x] build.gradle 加 ProjectE 编译期依赖（flatDir libs/projecte-1.20.1.jar，compileOnly）
+- [x] 按 mod 的 RecipeTypeMapper ×6（Create/Mekanism/Thermal/Occultism/BloodMagic/ProductiveBees，`requiredMods` 条件激活）+ conditional/mek_data 嵌套跳过（M3.1 处理）
+- [x] 原料预设模块（`RawMaterialEmcMapper` @EMCMapper → setValueBefore；演进见 §13）
+- [x] 与 Integration 排重（装 Integration 时其覆盖 mod 的原料跳过）
+- [x] 编译出"即用 jar"（dist/EMCAssistant.jar）→ ATM9 真实验收（进行中）
 
 ### 12.5 产品定位与分工（2026-08-05 用户确认）
 - **定位（用户原话校准）**：等价兼容 = 把兼容 mod 的**所有物品预写 EMC** 打包（静态）；我们 = **把加工方式翻译给等价交换（转换边）+ 只预写原材料的 EMC（种子值）**，产物价值由 ProjectE 图算法用"种子 + 加工方式"自己算（动态）。
@@ -229,3 +239,38 @@ ATM9（装 ProjectE 1.20.1 + 新版 P1 jar）跑一次 → P2 导入 → gap_rep
   - GTToolMapper：GT 机器配方（内部注册表，我们不重复造轮子）
   - ProjectE Integration（等价兼容）：BM/Botania/Ars/AE2/Avaritia 等
   - 原料预设与 Integration 冲突：装 Integration 时其已覆盖原料跳过
+
+## 13. 现行技术路线最终态（M3.1–M3.5 演进，2026-08-05/06）
+
+> 本节为**当前实际运行形态**，与 README 对外描述一致。
+
+### 13.1 组件清单（dist/EMCAssistant.jar，28–34KB，BUILD SUCCESSFUL）
+| 组件 | 实现 | 说明 |
+|---|---|---|
+| `AbstractEmcaRecipeMapper` | 基类 | `canHandle` 前缀分发 + `handleRecipe` 逐条 `addConversion`（通配跳过、tag 多解取第一个、单配方 try-catch 不崩服） |
+| `Create/Mekanism/Thermal/Occultism/BloodMagic/ProductiveBeesRecipeMapper` ×6 | `@RecipeTypeMapper(requiredMods=...)` | **mod 不在包内自动不注册**（条件激活）；跳过 mek_data/conditional/catalyst/蜜蜂实体类 |
+| `RawMaterialEmcMapper` | `@EMCMapper` | **快速路径**（M3.5）：纯查表注册种子，毫秒级，零遍历，整体 try-catch 隔离 |
+
+### 13.2 种子值三层策略（M3.5 最终）
+```
+① 逆向表（raw_emc.json，106 条 = 85 item + 21 tag）→ 查表注册 setValueBefore   [参考自 MIT 开源 ProjectE Integration，见 README 声明]
+② 16 原版染料 → 手动钉 32（环敏感：互染/分解配方成环被 ProjectE 归零）
+③ （M3.2 前有规则引擎/闭环种子：标签原料 + TARGET_MODS 无配方物品遍历——M3.5 因启动性能移除，待 config 开关恢复）
+```
+
+### 13.3 关键演进记录
+| 迭代 | 内容 | 原因 |
+|---|---|---|
+| M3.1 | 闭环链种子盲区修复：无配方内部物品预设 | 图论硬约束：入度 0 节点必须预设，否则依赖链永久 0 |
+| M3.2 | 逆向 Integration 种子表内置（106 条）+ thermal bug 修复（namespace=thermal 非子 mod id） | 作者校准值比规则引擎准 |
+| M3.3 | 16 染料钉 32（优先级高于"有配方跳过"） | 染料互染/分解配方成环 → 环检测归零（原版机制） |
+| M3.4 | 遍历快照化（List.copyOf） | CME 防御（后证实主因是重遍历本身，见 M3.5） |
+| M3.5 | **零干扰快速路径**：删 collectRecipeOutputs（17 万配方遍历）/estimateValue/5.5 万物品遍历 → 纯查表 ~150 条 setValueBefore + try-catch | 对照实验实锤：启动关键路径重遍历诱发 tombstone NPE / Forge 握手 CME（堆栈无我们 = 间接触发） |
+
+### 13.4 命令集（调试用，产品默认静默）
+`/emca status`（模式+摘要）· `/emca scan|rescan`（手动扫描）· `/emca translate`（生成转换边 datapack，M2 遗留）· `/emca missing`（输出无 EMC 物品到 `logs/emc_assistant/missing_report.txt`）· `/emca mode on|off`（开发模式开关，持久化 config/emc_assistant.properties）
+
+### 13.5 已知限制（待办输入）
+- mek_data/conditional 嵌套跳过（M3 适配器未解析）；蜜蜂实体类跳过；tag 输入取第一个；输入 count=槽位 1
+- 快速路径版无闭环种子/规则引擎（缺口中目标 mod 部分未覆盖，待 config 开关恢复）
+- M4 环自检离线预演未做；保底开关（M5）预留未实现
