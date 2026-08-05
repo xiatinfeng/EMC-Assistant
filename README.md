@@ -12,7 +12,7 @@
    - 仪式配方的灵魂/魔力/献祭成本忽略，只取 `ingredients → result`（ProjectE 只认物品输入输出）
 
 2. **原材料种子 EMC（@EMCMapper）**：给"图算法算不出的根节点"预设种子值：
-   - 逆向自 ProjectE Integration 的精确种子表（`raw_emc.json`，作者校准值）
+   - 数据参考自 MIT 开源的 ProjectE Integration（TagnumElite）种子表（`raw_emc.json`，作者校准值）
    - 16 种原版染料手动钉值（染料互染/分解配方成环 → ProjectE 环检测归零，必须种子兜住）
    - 整体 try-catch 隔离，失败只记日志，**绝不影响服务器启动**
 
@@ -57,7 +57,7 @@
 
 ## 数据来源声明
 
-- `src/main/resources/data/emcassistant/raw_emc.json` 的原料种子值**逆向自 ProjectE Integration（等价兼容）1.20.1 的 `pe_custom_conversions` values.before 表**，仅作事实性数值引用。
+- `src/main/resources/data/emcassistant/raw_emc.json` 的原料种子值**数据参考自 [ProjectE Integration](https://github.com/TagnumElite/ProjectE-Integration)（作者 TagnumElite，**MIT License**）1.20.1 的 `pe_custom_conversions` values.before 表**，仅作事实性数值引用，按 MIT 协议要求保留来源声明。
 
 ## License
 

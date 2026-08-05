@@ -35,7 +35,7 @@ import java.util.Set;
  * 任何情况下不影响服务器启动。
  *
  * 种子来源（保持"种子 + 规则"哲学）：
- * ① 逆向自 ProjectE Integration 的精确种子表（data/emcassistant/raw_emc.json，作者校准值，安全）
+ * ① 数据参考自 MIT 开源的 ProjectE Integration（TagnumElite）精确种子表（data/emcassistant/raw_emc.json，作者校准值，安全）
  * ② 16 原版染料手动钉（环敏感：染料互染/分解配方成环被 ProjectE 归零，必须先钉）
  *
  * 待恢复（config 开关，默认关）：通用 forge 标签种子 / 目标 mod 无配方闭环种子（需遍历）。
@@ -61,7 +61,7 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
 
     @Override
     public String getDescription() {
-        return "EMC Assistant: 原材料种子 EMC（逆向表 + 环敏感钉值，快速路径）";
+        return "EMC Assistant: 原材料种子 EMC（种子表 + 环敏感钉值，快速路径）";
     }
 
     @Override
@@ -74,7 +74,7 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
         try {
             int set = 0;
 
-            // ① 逆向自 ProjectE Integration 的精确种子表（item + tag，毫秒级查表，不遍历注册表）
+            // ① 参考 MIT 开源 ProjectE Integration 的精确种子表（item + tag，毫秒级查表，不遍历注册表）
             Map<String, Long> itemPreset = new HashMap<>();
             Map<TagKey<Item>, Long> tagPreset = new HashMap<>();
             loadPresetTable(resourceManager, itemPreset, tagPreset);
@@ -105,7 +105,7 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
         }
     }
 
-    /** 从资源 data/emcassistant/raw_emc.json 加载原料种子表（逆向自 ProjectE Integration） */
+    /** 从资源 data/emcassistant/raw_emc.json 加载原料种子表（数据参考自 MIT 开源 ProjectE Integration） */
     private static void loadPresetTable(ResourceManager rm, Map<String, Long> itemPreset, Map<TagKey<Item>, Long> tagPreset) {
         try {
             java.util.Optional<Resource> res = rm.getResource(new ResourceLocation("emcassistant", "raw_emc.json"));
