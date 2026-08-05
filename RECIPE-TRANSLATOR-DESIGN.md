@@ -102,7 +102,21 @@ CREATE TABLE recipes (
 - [x] **M2/M2.1**：翻译器内置 + dev 模式 + Integration 排重 + 限流
 - [x] **M3**：6 个 RecipeTypeMapper + 原料预设 + 即用 jar（§12.4 已勾选）
 - [x] **M3.1–M3.5**：闭环种子 → 逆向表 → 染料 → 快照化 → 快速路径（§13）
-- [ ] **当前待办**：①快速路径版 ATM9 验收（进存档/建新存档不崩）②闭环种子恢复为 config 开关（默认关）③装 GTToolMapper + Integration 消 GT/装饰缺口 ④第二梯队适配器（enderio→chemlib→rechiseled→mysticalagriculture→railcraft 按缺口数字排）⑤M4 环自检离线预演
+- [ ] **下一步行动计划（2026-08-06 定优先级：先稳定性，后覆盖面）**
+
+  **阶段 1：稳定性验收（最高优先级，必须先做）**
+  - [ ] S1 装回最新快速路径 jar → 进旧存档 + 建新存档，确认**不崩**（CME / tombstone NPE 是否根治）
+  - [ ] S2 `/emca missing` 出新报告（对比 31644，验证快速路径版实际效果）
+  - [ ] S3 抽查关键 EMC：染料 = 32？Create crushing / Mekanism enriching 产物有值？（翻译 + 种子生效）
+  - 通过标准：装 jar 进存档不崩 + 目标 mod 产物有 EMC
+
+  **阶段 2：缺口收敛（稳定性通过后才做，按性价比排）**
+  - [ ] ① 装 GTToolMapper + ProjectE Integration（白捡 ~1.6 万：GT 8714 + chipped 6151 等，用户侧零成本）
+  - [ ] ② 恢复闭环种子为 config 开关（默认关，遍历版延迟/降级，目标 mod 缺口再降几百）
+  - [ ] ③ 第二梯队适配器（enderio → chemlib → rechiseled → mysticalagriculture → railcraft，按新报告数字排）
+  - [ ] ④ M4 环自检离线预演（安全网，可随时穿插）
+
+  **决策原则**：稳定性 > 覆盖面。任何新适配器上线前，必须过"装 jar 进存档不崩"这关。
 
 ## 8. ATM9 配方形态实证（2026-08-05 解包 jar，第一手）
 
