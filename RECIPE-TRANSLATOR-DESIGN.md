@@ -412,3 +412,53 @@ EMCA 种子表(raw_emc) ─┼→ min-迭代(类 Bellman-Ford) → setValueAfter
 - [ ] 执行时机"进世界后全量异步 + 提示重载"（分阶段开关）确认。
 - [ ] 原版表数值抄入范围（defaults + metals 全量 or 仅常用原版物品）。
 - [ ] gttoolmapper 卸载动作（原版价恢复）与引擎开发顺序。
+
+## 16. 引擎 v2 生态调研结论（2026-08-10，本地实证 + 联网调研）
+
+> 触发：用户要求开工前先调研——①我们以 jar 身份在 ProjectE 下到底能做什么；②其他领域有没有现成解法（不查论文）。
+
+### 16.1 ProjectE 给我们的能力全景（jar 反编译实证）
+
+| 能力 | API | 状态 |
+|---|---|---|
+| 配方转换边 | `IRecipeTypeMapper.handleRecipe → collector.addConversion(count, out, inputs)` | 已用（6 个 mapper） |
+| 固定值（计算前） | `collector.setValueBefore(nss, v)` | 已用（种子） |
+| 固定值（计算后覆盖） | `collector.setValueAfter(nss, v)` | 已用（PROCESSED） |
+| 从转换设值 | `collector.setValueFromConversion(count, out, inputs)` | 未用（等价 addConversion 语义变体，可作引擎输出） |
+| 算术扩展 | `IExtendedMappingCollector.addConversion(..., IValueArithmetic)` | 未用（NBT/标签算术，高级） |
+| 完成信号 | `collector.finishCollection()` | mapper 框架自动调 |
+| 液体 NSS | `NSSFluid.createFluid(rl/FluidStack)` | 已用 |
+| datapack 表 | `data/<domain>/pe_custom_conversions/*.json`（values.before/conversion + groups） | 已实证（ProjectE 原版/Mek/SecurityCraft 自带） |
+| **运行时改值** | `/projecte setemc|removeemc|resetemc` + `/projecte reloademc`（写 custom_emc.json 后重载生效） | **引擎输出通道候选** |
+| 运行时查询 | `IEMCProxy.hasValue/getValue/getSellValue` | 已用（RegistryScanner） |
+| 缺失导出 | 客户端 `DumpMissingEmc` 命令 | ProjectE 自带，与我们 missing 报告重叠（佐证需求） |
+| 许可证 | **ProjectE = MIT**（CurseForge 实证） | 抄数值/参考实现合法（保留版权声明） |
+
+**结论**：ProjectE 给了完整的"种子 + 转换 + 计算前后钉值"能力，且支持运行时改值（reloademc）。我们引擎的"setValueAfter 输出 + 进世界后跑 + 提示重载"通道成立；甚至可编程写 custom_emc.json + 触发 reload（免玩家手动）。
+
+### 16.2 生态调研：MC mod 侧
+
+| 方案 | 机制 | 关键启示 |
+|---|---|---|
+| **GTToolMapper**（com.flamegazza） | 官方设计 = **"Mapper only"**：只把 GT 机器配方翻译成"材料成本求和"的转换边，**不赋原材料值**（作者明示：原材料需 GTMoreEMC 或自配）。**ModDex 官方最新 = v1.1（7.8KB）**；用户装的 v1.4（13.7KB）带 Skyblock 零输入种子（101583 个）+ 材料形态钉值（3442 个）→ **污染源** | **污染事件最佳解 = 降级到官方 v1.1**（纯配方计算器，原版价恢复 + GT 配方翻译保留），而非卸载。GT 原材料缺口由 GTMoreEMC / 我们引擎补 |
+| GTMoreEMC（MeowmelMuku） | 给 GT 矿石/锭/板/电路/工具赋 EMC，按"稀有度/加工复杂度/能耗"动态计算；1.20.1 有 SNAPSHOT | "GT 原材料值"的正规生态方案；注意它给 ores 赋 EMC 可能与 ProjectE 黑名单冲突，需实测 |
+| ProjectE-GTCEu-Modern（VincentZhou） | 1.21.1 专用；支持多对一配方；**故意黑名单**（离心机/蒸馏）；**基础流体（水/氧/氢）与废液排除出 EMC 计算**；作者自评"可能有 exploit、Not balanced at all" | **生态对 GT×ProjectE 的共识 = 不完美 + 黑名单 + 流体排除**。我们 1.20.1 用不了它，但它的"流体排除/多对多不支持"验证了我们的规则设计边界 |
+| Expanded Equivalence（Zeitheron） | 老 addon（1.19.2/1.12.2 停更）：为特殊合成系统（Draconic Fusion / Avaritia 极致合成）注册 EMC；**Botania 花因 NBT 识别无 EMC**；**Avaritia 物品超 Java int 上限（21 亿）被排除** | 验证：①特殊机器配方注册 EMC 是成熟方向 ②**NBT 物品放弃是生态共识**（我们 D 类 ✓）③**超 int 值要防溢出**（我们用 long，但 ProjectE 内部值域需核对） |
+| ProjectE addon 家族全景（namu.wiki） | Equivalent Integration / Project EX / Expanded Equivalence / Equivalent Energistics / Refined Exchange / GTMoreEMC / GTToolMapper / ProjectE-GTCEu-Modern | **全生态无一家做"通用全配方价值引擎"**——全是"预写表 + 特定配方翻译"。我们的引擎 v2 空位成立 |
+
+### 16.3 生态调研：其他领域（生产链计算器，非论文）
+
+| 工具 | 解法 | 启示 |
+|---|---|---|
+| Production Chains Calculator（EldritchTools，Factorio/Satisfactory/DSP/Anno） | Compute Method：**Simple / Matrix / LP-Force / LP-Optimize**。Matrix 解"多配方 + 环"；LP 最小化副产品 | **环 = 全行业公认难点**（该工具 Matrix 才能解；tbjoern 的 ProductionChainCalculator 作者把"循环依赖"列在 wishlist 未实现）。**我们 min-迭代 = Simple 档**：对"价值标定"（下界语义）够用且匹配 ProjectE 哲学；Matrix/LP 是"生产比例"解法，超纲且引库重（工作量爆炸，用户已拒绝） |
+| FactorioLab（Satisfactory） | 矩阵求解器处理复杂回收环 | 同上 |
+| 结论 | 配方图价值计算 = 图论问题，业界解法从"迭代"到"线性规划"谱系；我们取最简档即可 | **min-迭代决策维持**；若未来要精确解环再评估 LP（不推荐） |
+
+### 16.4 对引擎 v2 的修正与确认（本调研产出）
+
+1. **GTToolMapper 污染事件修正**：不卸载、**降级 v1.1**（官方渠道）→ GT 配方翻译保留 + 原版价恢复；GT 原材料值后续由 GTMoreEMC 或我们引擎的种子层补。**已写入 §7 待办**。
+2. **引擎输出通道确认**：运行时 `/projecte setemc` + `reloademc` 存在 → 引擎可编程写 custom_emc.json + 触发重载（备选；首版仍用"setValueAfter 进世界后跑 + 提示玩家重载"更稳）。
+3. **值域防护**：EMC 用 long；对超 int 物品（Avaritia 类）注意 ProjectE 内部计算上限，min-迭代加溢出保护（clamp）。
+4. **NBT 物品**：确认放弃（生态共识，Expanded Equivalence 同样放弃 Botania 花）。
+5. **流体排除**：参考 ProjectE-GTCEu-Modern 做法，基础流体（水/氧/氢/空气等）与废液在引擎内排除（不参与推导，避免污染链条）——§15.5 规则补充。
+6. **空位成立**：无竞品做通用引擎，我们的差异化 = "RecipeManager 全量配方 + min-迭代 + 种子层 + 规则集"的组合。
