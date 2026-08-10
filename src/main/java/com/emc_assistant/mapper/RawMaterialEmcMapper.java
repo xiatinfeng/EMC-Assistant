@@ -104,7 +104,8 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
             }
 
             // ③ 加工产物钉值（PROCESSED| 前缀 → setValueAfter，推导后覆盖：
-            //    矿石/原矿被 ProjectE 黑名单清零时配方推导断链，产物需直接钉值，值 = 对应锭 EMC ÷ 2）
+            //    矿石/原矿被 ProjectE 黑名单清零时配方推导断链，产物需直接钉值，值 = 对应锭 EMC 全价
+            //    （mod 正常量产链：粉碎→洗涤→粒→锭，按 1:1 主输出等价，用户拍板不砍半））
             for (Map.Entry<String, Long> e : processedPreset.entrySet()) {
                 Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(e.getKey()));
                 if (item != null && item != Items.AIR) {
