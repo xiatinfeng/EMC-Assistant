@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import moze_intel.projecte.api.mapper.EMCMapper;
 import moze_intel.projecte.api.mapper.IEMCMapper;
 import moze_intel.projecte.api.mapper.collector.IMappingCollector;
+import moze_intel.projecte.api.nss.NSSFluid;
 import moze_intel.projecte.api.nss.NSSItem;
 import moze_intel.projecte.api.nss.NormalizedSimpleStack;
 import net.minecraft.core.RegistryAccess;
@@ -61,7 +62,7 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
 
     @Override
     public String getDescription() {
-        return "EMC Assistant: 原材料种子 EMC（种子表 + 环敏感钉值，快速路径）";
+        return "EMC Assistant: 原材料种子 EMC + 液体种子 + 加工产物钉值（快速路径）";
     }
 
     @Override
@@ -77,7 +78,9 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
             // ① 参考 MIT 开源 ProjectE Integration 的精确种子表（item + tag，毫秒级查表，不遍历注册表）
             Map<String, Long> itemPreset = new HashMap<>();
             Map<TagKey<Item>, Long> tagPreset = new HashMap<>();
-            loadPresetTable(resourceManager, itemPreset, tagPreset);
+            Map<String, Long> fluidPreset = new HashMap<>();
+            Map<String, Long> processedPreset = new HashMap<>();
+            loadPresetTable(resourceManager, itemPreset, tagPreset, fluidPreset, processedPreset);
             for (Map.Entry<String, Long> e : itemPreset.entrySet()) {
                 Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(e.getKey()));
                 if (item != null && item != Items.AIR) {
@@ -90,7 +93,27 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
                 set++;
             }
 
-            // ② 16 染料手动钉（环敏感，优先级最高）
+            // ② 液体种子（FLUID| 前缀 → NSSFluid，液体本身在转化桌中可见 EMC）
+            for (Map.Entry<String, Long> e : fluidPreset.entrySet()) {
+                ResourceLocation rl = ResourceLocation.tryParse(e.getKey());
+                if (rl == null) continue;
+                try {
+                    collector.setValueBefore(NSSFluid.createFluid(rl), e.getValue());
+                    set++;
+                } catch (Exception ignore) { }
+            }
+
+            // ③ 加工产物钉值（PROCESSED| 前缀 → setValueAfter，推导后覆盖：
+            //    矿石/原矿被 ProjectE 黑名单清零时配方推导断链，产物需直接钉值，值 = 对应锭 EMC ÷ 2）
+            for (Map.Entry<String, Long> e : processedPreset.entrySet()) {
+                Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(e.getKey()));
+                if (item != null && item != Items.AIR) {
+                    collector.setValueAfter(NSSItem.createItem(item), e.getValue());
+                    set++;
+                }
+            }
+
+            // ④ 16 染料手动钉（环敏感，优先级最高）
             for (String id : DYE_ITEMS) {
                 Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(id));
                 if (item != null && item != Items.AIR) {
@@ -105,8 +128,13 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
         }
     }
 
-    /** 从资源 data/emcassistant/raw_emc.json 加载原料种子表（数据参考自 MIT 开源 ProjectE Integration） */
-    private static void loadPresetTable(ResourceManager rm, Map<String, Long> itemPreset, Map<TagKey<Item>, Long> tagPreset) {
+    /**
+     * 从资源 data/emcassistant/raw_emc.json 加载种子表（数据参考自 MIT 开源 ProjectE Integration）。
+     * key 约定：#tag → 物品 tag 种子（setValueBefore）；FLUID|id → 液体种子（setValueBefore）；
+     * PROCESSED|id → 加工产物钉值（setValueAfter）；其余 → 物品种子（setValueBefore）。
+     */
+    private static void loadPresetTable(ResourceManager rm, Map<String, Long> itemPreset, Map<TagKey<Item>, Long> tagPreset,
+                                        Map<String, Long> fluidPreset, Map<String, Long> processedPreset) {
         try {
             java.util.Optional<Resource> res = rm.getResource(new ResourceLocation("emcassistant", "raw_emc.json"));
             if (res.isEmpty()) {
@@ -120,7 +148,11 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
             for (Map.Entry<String, JsonElement> e : values.entrySet()) {
                 String key = e.getKey();
                 long v = e.getValue().getAsLong();
-                if (key.startsWith("#")) {
+                if (key.startsWith("FLUID|")) {
+                    fluidPreset.put(key.substring("FLUID|".length()), v);
+                } else if (key.startsWith("PROCESSED|")) {
+                    processedPreset.put(key.substring("PROCESSED|".length()), v);
+                } else if (key.startsWith("#")) {
                     String loc = key.substring(1);
                     int idx = loc.indexOf(':');
                     if (idx > 0) {
@@ -128,11 +160,12 @@ public class RawMaterialEmcMapper implements IEMCMapper<NormalizedSimpleStack, L
                             tagPreset.put(ItemTags.create(new ResourceLocation(loc.substring(0, idx), loc.substring(idx + 1))), v);
                         } catch (Exception ignore) { }
                     }
-                } else if (!key.startsWith("FLUID|")) { // 流体种子暂跳过（known limitation）
+                } else {
                     itemPreset.put(key, v);
                 }
             }
-            LOGGER.info("[EMC Assistant] raw_emc.json 加载: {} item + {} tag", itemPreset.size(), tagPreset.size());
+            LOGGER.info("[EMC Assistant] raw_emc.json 加载: {} item + {} tag + {} fluid + {} processed",
+                    itemPreset.size(), tagPreset.size(), fluidPreset.size(), processedPreset.size());
         } catch (Exception e) {
             LOGGER.warn("[EMC Assistant] raw_emc.json 加载失败: {}", e.getMessage());
         }
