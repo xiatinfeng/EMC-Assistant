@@ -31,6 +31,7 @@ import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
@@ -60,7 +61,7 @@ public class RegistryScanner {
 
     private static final TagKey<Item> TAG_FORGE_ORES = ItemTags.create(new ResourceLocation("forge", "ores"));
     private static final TagKey<Item> TAG_FORGE_RAW_MATERIALS = ItemTags.create(new ResourceLocation("forge", "raw_materials"));
-    private static final File OUTPUT_FILE = new File(".emc_assistant/items_snapshot.json");
+    private static final File OUTPUT_FILE = FMLPaths.GAMEDIR.get().resolve(".emc_assistant/items_snapshot.json").toFile();
 
     /** ProjectE VanillaRecipeTypeMapper/FallbackRecipeTypeMapper 覆盖的配方类型 → 不需要翻译 */
     private static final Set<String> VANILLA_COVERED_TYPES = Set.of(
@@ -83,7 +84,7 @@ public class RegistryScanner {
     private static boolean devMode = false;
     private static boolean integrationLoaded = false;
     private static JsonObject recipeDetailsCache = null;
-    private static final File CONFIG_FILE = new File("config/emc_assistant.properties");
+    private static final File CONFIG_FILE = FMLPaths.CONFIGDIR.get().resolve("emc_assistant.properties").toFile();
     /** ProjectE Integration 已覆盖的 mod → 装它时这些 mod 的翻译由 Integration runtime 处理，我们跳过避免重复 */
     private static final Set<String> INTEGRATION_COVERED_MODS = Set.of(
         "bloodmagic", "botania", "ars_nouveau", "alchemistry",
