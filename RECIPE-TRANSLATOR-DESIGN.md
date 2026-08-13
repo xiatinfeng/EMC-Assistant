@@ -462,3 +462,19 @@ EMCA 种子表(raw_emc) ─┼→ min-迭代(类 Bellman-Ford) → setValueAfter
 4. **NBT 物品**：确认放弃（生态共识，Expanded Equivalence 同样放弃 Botania 花）。
 5. **流体排除**：参考 ProjectE-GTCEu-Modern 做法，基础流体（水/氧/氢/空气等）与废液在引擎内排除（不参与推导，避免污染链条）——§15.5 规则补充。
 6. **空位成立**：无竞品做通用引擎，我们的差异化 = "RecipeManager 全量配方 + min-迭代 + 种子层 + 规则集"的组合。
+
+### 16.5 rs_integration 参考（2026-08-14 补充，gh 源码实证）
+
+> 来源：用户发现 rs_integration（Elten-huanghuang，Refined Storage 递归自动合成，v1.3.2，1.20.1 Forge）——做"嵌套合成执行"，与 EMC 引擎**同构不同层**（它执行合成、我们标定价值）。**专有许可（Proprietary License, All rights reserved, NOASSERTION）→ 只借鉴思想，零代码复制。**
+
+对 EMC 引擎 v2 的**可借鉴点**（按价值排序）：
+
+1. **RecipeIndex 建图结构**（`Map<Item, List<Entry>>` 统一索引 + `ModRecipeHandler` 按 mod 提取配方）——与我们引擎 v1 建图（RecipeManager 全量 + RecipeTypeMapper 按 mod）同款，其"单次构建 + 版本化复用"更清晰。**引擎 v1.1 建图重构参考**。
+2. **搜索护栏体系**（maxSearchStates=65536 / callDepth=512 / deadlineNanos=500ms / 失败记忆去重=8192）——我们 min-迭代目前只有 MAX_ITERATIONS；**补 deadlineNanos 时间预算 + 失败记忆**，防异常图（深链/多配方）拖垮（§15.8 风险①的加固）。
+3. **版本化缓存**（`sourceRevision` + recipeManager 引用比对，构建一次复用）——我们引擎每次启动全量建图（17 万配方秒级），可借鉴"同一 recipeManager 引用 + 世界切换失效"的增量缓存，**二次进世界省一次建图**。
+4. **no-gain 剪枝**（等价材料族互转剪枝：羊毛染色/木头家族）——min-迭代"环取最低"已覆盖环值问题；若实测某类环导致迭代轮数多/值怪异，可借鉴其"等价互转配方剪枝"（保留等量/增量配方，剪掉纯等价互转）作为**迭代前预处理**。
+5. **纯值不可变图**（record，线程安全）——我们引擎建图可同样用不可变结构，支持异步规划（引擎跑在 Worker 线程，未来若移到进世界后异步，不可变图免锁）。
+
+**不借鉴**：RS 网络交付、机器调度、事务分配、GUI 渲染层（那些是执行/生态层，与 EMC 标定无关）。
+
+**状态**：以上 1/2/3 已纳入引擎 v1.1 实施候选（§15.10 待确认外的新增项）；4 为条件项（实测触发才做）。
